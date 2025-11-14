@@ -1,0 +1,147 @@
+:root {
+  color-scheme: light;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
+  background-color: #f3f4f6;
+  color: #1f2937;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+}
+
+header {
+  margin-bottom: 2rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.layout {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (min-width: 960px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: flex-start;
+  }
+}
+
+.form {
+  display: grid;
+  gap: 1rem;
+}
+
+.form-section {
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 1rem;
+  background-color: #fff;
+}
+
+.form-section legend {
+  font-weight: 600;
+  padding: 0 0.5rem;
+}
+
+.form-section__content {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.field__label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.field__input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.field__input-wrapper input,
+.field__input-wrapper select {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  background-color: #f9fafb;
+}
+
+.field__input-wrapper select {
+  background-color: #fff;
+}
+
+.field__suffix {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.field__description {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.results {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid #d1d5db;
+}
+
+.results h2 {
+  margin-top: 0;
+}
+
+.results__grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.results__grid h3 {
+  margin-bottom: 0.5rem;
+}
+
+.results__grid ul {
+  margin: 0;
+  padding-left: 1rem;
+  color: #111827;
+}
+
+.results__grid li {
+  margin-bottom: 0.35rem;
+}
+
+button.reset-button {
+  margin-top: 1rem;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background-color: #2563eb;
+  color: #fff;
+  font-weight: 600;
+}
