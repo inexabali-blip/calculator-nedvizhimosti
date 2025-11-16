@@ -1,197 +1,155 @@
-import type {
-  CalculatorInputs,
-  CalculatorResults,
-} from '../types/rentalTypes';
+import type { CalculatorInputs, CalculatorResults } from '../types/rentalTypes';
 
-const MONTHS_IN_YEAR = 12;
-const DAYS_IN_YEAR = 365;
-
-const clampPercentage = (value: number): number => {
-  if (Number.isNaN(value)) return 0;
-  if (value < 0) return 0;
-  if (value > 100) return 100;
-  return value;
-};
-
-const toFraction = (value: number): number => clampPercentage(value) / 100;
-
-const sumFixedExpenses = (inputs: CalculatorInputs): number => {
-  const { fixed } = inputs.expenses;
-  return (
-    clampNumber(fixed.utilities) +
-    clampNumber(fixed.staff) +
-    clampNumber(fixed.insurance) +
-    clampNumber(fixed.other)
-  );
-};
-
-const clampNumber = (value: number): number => (Number.isFinite(value) ? value : 0);
-
-const calculateMonthlyGrossIncome = (inputs: CalculatorInputs): number => {
-  const { rental } = inputs;
-  const occupancyFraction = toFraction(rental.occupancy);
-
-  if (rental.model === 'monthly') {
-    return clampNumber(rental.monthlyRent) * occupancyFraction;
-  }
-
-  const annualRevenueAtOccupancy =
-    clampNumber(rental.nightlyRent) * occupancyFraction * DAYS_IN_YEAR;
-  return annualRevenueAtOccupancy / MONTHS_IN_YEAR;
-};
-
-const calculateAnnualGrossIncome = (monthlyGross: number): number =>
-  monthlyGross * MONTHS_IN_YEAR;
-
-const calculateOperatingExpenses = (
-  inputs: CalculatorInputs,
-  monthlyGrossIncome: number,
-) => {
-  const fixedMonthly = sumFixedExpenses(inputs);
-  const variableRate = toFraction(inputs.expenses.variable.revenueShare);
-  const variableMonthly = monthlyGrossIncome * variableRate;
-  const monthlyTotal = fixedMonthly + variableMonthly;
-
-  return {
-    monthlyFixed: fixedMonthly,
-    monthlyVariable: variableMonthly,
-    monthlyTotal,
-    annualTotal: monthlyTotal * MONTHS_IN_YEAR,
-  };
-};
-
-const calculateLoanPayment = (inputs: CalculatorInputs) => {
-  const { loanAmount, interestRate, loanTermYears } = inputs.financing;
-  if (loanAmount <= 0 || loanTermYears <= 0) {
-    return { monthly: 0, annual: 0 };
-  }
-
-  const totalMonths = loanTermYears * MONTHS_IN_YEAR;
-  const monthlyRate = interestRate > 0 ? interestRate / 100 / MONTHS_IN_YEAR : 0;
-
-  if (monthlyRate === 0) {
-    const payment = loanAmount / totalMonths;
-    return { monthly: payment, annual: payment * MONTHS_IN_YEAR };
-  }
-
-  const payment =
-    (loanAmount * monthlyRate) /
-    (1 - Math.pow(1 + monthlyRate, -totalMonths));
-
-  return { monthly: payment, annual: payment * MONTHS_IN_YEAR };
-};
-
-const calculateTaxes = (
-  incomeBeforeTax: number,
-  taxRatePercentage: number,
-): number => {
-  if (incomeBeforeTax <= 0 || taxRatePercentage <= 0) {
-    return 0;
-  }
-
-  return incomeBeforeTax * (taxRatePercentage / 100);
-};
-
-const calculateBreakEvenOccupancy = (
-  inputs: CalculatorInputs,
-  monthlyGrossAtFullOccupancy: number,
-  operatingExpensesMonthlyFixed: number,
-  loanPaymentMonthly: number,
-): number | null => {
-  const variableRate = toFraction(inputs.expenses.variable.revenueShare);
-  const denominator = monthlyGrossAtFullOccupancy * (1 - variableRate);
-
-  if (denominator <= 0) {
-    return null;
-  }
-
-  const occupancyFraction =
-    (operatingExpensesMonthlyFixed + loanPaymentMonthly) / denominator;
-
-  if (!Number.isFinite(occupancyFraction)) {
-    return null;
-  }
-
-  if (occupancyFraction < 0) {
-    return 0;
-  }
-
-  return occupancyFraction * 100;
-};
+// Небольшой helper, чтобы не ловить NaN/бесконечности
+const safeNumber = (value: number): number =>
+  Number.isFinite(value) ? value : 0;
 
 export const calculateResults = (inputs: CalculatorInputs): CalculatorResults => {
-  const monthlyGrossIncome = calculateMonthlyGrossIncome(inputs);
-  const annualGrossIncome = calculateAnnualGrossIncome(monthlyGrossIncome);
+  const { property, rental, expenses, taxes, financing } = inputs;
 
-  const operatingExpenses = calculateOperatingExpenses(
-    inputs,
-    monthlyGrossIncome,
-  );
+  // ---------- 1. ВЫРУЧКА ----------
+  const occupancy = Math.min(Math.max(rental.occupancy, 0), 100) / 100; // 0–1
 
-  const noi = annualGrossIncome - operatingExpenses.annualTotal;
+  let monthlyGross = 0;
+  let annualGross = 0;
 
-  const loanPayments = calculateLoanPayment(inputs);
-  const cashFlowBeforeDebt = noi;
-  const cashFlowAfterDebtBeforeTax = noi - loanPayments.annual;
-  const taxableIncome = Math.max(cashFlowAfterDebtBeforeTax, 0);
-  const taxes = calculateTaxes(
-    taxableIncome,
-    inputs.taxes.incomeTaxRate,
-  );
-  const cashFlowAfterDebtAndTax = cashFlowAfterDebtBeforeTax - taxes;
+  if (rental.model === 'monthly') {
+    // Помесячная аренда — берём ставку за месяц, заполняемость не влияет
+    monthlyGross = safeNumber(rental.monthlyRent);
+    annualGross = monthlyGross * 12;
+  } else {
+    // Посуточная аренда — считаем по ночам и заполняемости
+    const nightly = safeNumber(rental.nightlyRent);
+    monthlyGross = nightly * 30 * occupancy;
+    annualGross = nightly * 365 * occupancy;
+  }
 
-  const equityInvested = Math.max(
-    inputs.financing.equity + inputs.property.initialCapex,
-    0,
-  );
+  const grossIncome = {
+    monthly: monthlyGross,
+    annual: annualGross,
+  };
 
-  const cashOnCash =
-    equityInvested > 0
-      ? (cashFlowAfterDebtAndTax / equityInvested) * 100
-      : 0;
+  // ---------- 2. ОПЕРАЦИОННЫЕ РАСХОДЫ ----------
+  const monthlyFixed =
+    safeNumber(expenses.fixed.utilities) +
+    safeNumber(expenses.fixed.staff) +
+    safeNumber(expenses.fixed.insurance) +
+    safeNumber(expenses.fixed.other);
+
+  const revenueShare = Math.min(Math.max(expenses.variable.revenueShare, 0), 100) / 100;
+  const monthlyVariable = monthlyGross * revenueShare;
+
+  const monthlyTotal = monthlyFixed + monthlyVariable;
+  const annualTotal = monthlyTotal * 12;
+
+  const operatingExpenses = {
+    monthlyFixed,
+    monthlyVariable,
+    monthlyTotal,
+    annualTotal,
+  };
+
+  // ---------- 3. NOI (годовой) ----------
+  const annualNOI = annualGross - annualTotal;
+  const noi = annualNOI;
+
+  // ---------- 4. КРЕДИТ (аннуитетный платёж) ----------
+  const loanAmount = safeNumber(financing.loanAmount);
+  const interestRate = safeNumber(financing.interestRate);
+  const loanTermYears = safeNumber(financing.loanTermYears);
+
+  let monthlyDebtPayment = 0;
+
+  if (loanAmount > 0 && interestRate > 0 && loanTermYears > 0) {
+    const monthlyRate = interestRate / 100 / 12;
+    const n = loanTermYears * 12;
+    const factor = Math.pow(1 + monthlyRate, n);
+    const payment = (loanAmount * monthlyRate * factor) / (factor - 1);
+    monthlyDebtPayment = safeNumber(payment);
+  }
+
+  const annualDebtPayment = monthlyDebtPayment * 12;
+
+  const loanPayments = {
+    monthly: monthlyDebtPayment,
+    annual: annualDebtPayment,
+  };
+
+  // ---------- 5. НАЛОГИ ----------
+  const incomeTaxRate = Math.min(Math.max(taxes.incomeTaxRate, 0), 100) / 100;
+
+  // База для налога — прибыль после обслуживания долга, но не ниже 0
+  const taxBase = Math.max(annualNOI - annualDebtPayment, 0);
+  const taxesAmount = taxBase * incomeTaxRate;
+
+  // ---------- 6. CASH FLOW ----------
+  const annualBeforeDebt = annualNOI;
+  const annualAfterDebtBeforeTax = annualNOI - annualDebtPayment;
+  const annualAfterDebtAndTax = annualAfterDebtBeforeTax - taxesAmount;
+
+  const cashFlow = {
+    annualBeforeDebt,
+    annualAfterDebtBeforeTax,
+    annualAfterDebtAndTax,
+  };
+
+  // ---------- 7. ПОКАЗАТЕЛИ ДОХОДНОСТИ ----------
+  // Cap Rate считаем от полной стоимости объекта (цена + CapEx)
+  const totalPurchase = safeNumber(property.purchasePrice) + safeNumber(property.initialCapex);
+  const equity = safeNumber(financing.equity);
 
   const capRate =
-    inputs.property.purchasePrice > 0
-      ? (noi / inputs.property.purchasePrice) * 100
-      : 0;
+    totalPurchase > 0 ? (annualNOI / totalPurchase) * 100 : 0;
 
+  const cashOnCash =
+    equity > 0 ? (annualAfterDebtAndTax / equity) * 100 : 0;
+
+  // Срок окупаемости по equity (в годах)
   const paybackPeriodYears =
-    cashFlowAfterDebtAndTax > 0 && equityInvested > 0
-      ? equityInvested / cashFlowAfterDebtAndTax
+    annualAfterDebtAndTax > 0 && equity > 0
+      ? equity / annualAfterDebtAndTax
       : null;
 
-  const monthlyGrossAtFullOccupancy =
-    inputs.rental.model === 'monthly'
-      ? clampNumber(inputs.rental.monthlyRent)
-      : (clampNumber(inputs.rental.nightlyRent) * DAYS_IN_YEAR) /
-        MONTHS_IN_YEAR;
+  // Точка безубыточности по заполняемости (для посуточной модели)
+  let breakEvenOccupancy: number | null = null;
 
-  const breakEvenOccupancy = calculateBreakEvenOccupancy(
-    inputs,
-    monthlyGrossAtFullOccupancy,
-    operatingExpenses.monthlyFixed,
-    loanPayments.monthly,
-  );
+  if (rental.model === 'daily') {
+    const nightly = safeNumber(rental.nightlyRent);
+    const annualFixed = monthlyFixed * 12;
 
-  return {
-    grossIncome: {
-      monthly: monthlyGrossIncome,
-      annual: annualGrossIncome,
-    },
+    // Упрощённо: считаем точку, где NOI ≈ долг (налоги игнорируем для упрощения)
+    // annualNOI(x) = nightly * 365 * x * (1 - revenueShare) - annualFixed
+    // break-even: annualNOI(x) - annualDebtPayment = 0
+    // => nightly * 365 * x * (1 - revenueShare) = annualFixed + annualDebtPayment
+    const denominator = nightly * 365 * (1 - revenueShare);
+
+    if (denominator > 0) {
+      const x = (annualFixed + annualDebtPayment) / denominator; // доля 0–1
+      const percent = x * 100;
+      if (percent > 0 && percent < 1000) {
+        // если расчёт вменяемый
+        breakEvenOccupancy = percent;
+      }
+    }
+  }
+
+  const returnMetrics = {
+    cashOnCash,
+    capRate,
+    paybackPeriodYears,
+    breakEvenOccupancy,
+  };
+
+  // ---------- 8. Финальный объект ----------
+  const results: CalculatorResults = {
+    grossIncome,
     operatingExpenses,
     noi,
     loanPayments,
-    cashFlow: {
-      annualBeforeDebt: cashFlowBeforeDebt,
-      annualAfterDebtBeforeTax: cashFlowAfterDebtBeforeTax,
-      annualAfterDebtAndTax,
-    },
-    taxes,
-    returnMetrics: {
-      cashOnCash,
-      capRate,
-      paybackPeriodYears,
-      breakEvenOccupancy,
-    },
+    cashFlow,
+    taxes: taxesAmount,
+    returnMetrics,
   };
+
+  return results;
 };

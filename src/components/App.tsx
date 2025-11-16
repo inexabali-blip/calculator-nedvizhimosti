@@ -1,9 +1,10 @@
+import React from 'react';
 import { FormSection } from './FormSection';
 import { InputField } from './InputField';
 import { ResultsView } from './ResultsView';
 import { useRentalCalculator } from '../hooks/useRentalCalculator';
 
-export const App = () => {
+const App: React.FC = () => {
   const {
     inputs,
     results,
@@ -18,6 +19,12 @@ export const App = () => {
   const handleCurrencyChange = (value: number | string) => {
     updateProperty({ currency: String(value).toUpperCase() });
   };
+
+  // Признак, что объект полностью оплачен своими средствами
+  const isAllEquity =
+    inputs.financing.loanAmount === 0 &&
+    inputs.financing.interestRate === 0 &&
+    inputs.financing.loanTermYears === 0;
 
   return (
     <div className="container">
@@ -49,7 +56,9 @@ export const App = () => {
             <InputField
               label="Дополнительные вложения (CapEx)"
               value={inputs.property.initialCapex}
-              onChange={(value) => updateProperty({ initialCapex: Number(value) })}
+              onChange={(value) =>
+                updateProperty({ initialCapex: Number(value) })
+              }
               step={1000}
               min={0}
             />
@@ -62,7 +71,9 @@ export const App = () => {
                 <select
                   value={inputs.rental.model}
                   onChange={(event) =>
-                    updateRental({ model: event.target.value as typeof inputs.rental.model })
+                    updateRental({
+                      model: event.target.value as typeof inputs.rental.model,
+                    })
                   }
                 >
                   <option value="monthly">Помесячно</option>
@@ -73,7 +84,9 @@ export const App = () => {
             <InputField
               label="Аренда в месяц"
               value={inputs.rental.monthlyRent}
-              onChange={(value) => updateRental({ monthlyRent: Number(value) })}
+              onChange={(value) =>
+                updateRental({ monthlyRent: Number(value) })
+              }
               step={100}
               min={0}
               description="Используется для модели помесячной аренды"
@@ -81,7 +94,9 @@ export const App = () => {
             <InputField
               label="Аренда за ночь"
               value={inputs.rental.nightlyRent}
-              onChange={(value) => updateRental({ nightlyRent: Number(value) })}
+              onChange={(value) =>
+                updateRental({ nightlyRent: Number(value) })
+              }
               step={10}
               min={0}
               description="Используется для посуточной аренды"
@@ -162,7 +177,9 @@ export const App = () => {
             <InputField
               label="Ставка налога на прибыль, %"
               value={inputs.taxes.incomeTaxRate}
-              onChange={(value) => updateTaxes({ incomeTaxRate: Number(value) })}
+              onChange={(value) =>
+                updateTaxes({ incomeTaxRate: Number(value) })
+              }
               step={1}
               min={0}
               max={100}
@@ -170,35 +187,81 @@ export const App = () => {
           </FormSection>
 
           <FormSection title="Финансирование">
+            {/* Галочка "Вся сумма своими средствами" */}
+            <label className="field" style={{ marginBottom: '10px' }}>
+              <input
+                type="checkbox"
+                checked={isAllEquity}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+
+                  if (checked) {
+                    // Пользователь выбирает оплату 100% своими средствами
+                    const total =
+                      inputs.property.purchasePrice +
+                      inputs.property.initialCapex;
+
+                    updateFinancing({
+                      equity: total,
+                      loanAmount: 0,
+                      interestRate: 0,
+                      loanTermYears: 0,
+                    });
+                  } else {
+                    // При снятии галочки просто даём пользователю
+                    // возможность заново ввести параметры кредита
+                    updateFinancing({
+                      loanAmount: 0,
+                      interestRate: 0,
+                      loanTermYears: 1,
+                    });
+                  }
+                }}
+              />
+              <span style={{ marginLeft: 8 }}>Вся сумма своими средствами</span>
+            </label>
+
             <InputField
               label="Собственные средства"
               value={inputs.financing.equity}
-              onChange={(value) => updateFinancing({ equity: Number(value) })}
+              onChange={(value) =>
+                updateFinancing({ equity: Number(value) })
+              }
               step={1000}
               min={0}
             />
             <InputField
               label="Кредит"
               value={inputs.financing.loanAmount}
-              onChange={(value) => updateFinancing({ loanAmount: Number(value) })}
+              onChange={(value) =>
+                updateFinancing({ loanAmount: Number(value) })
+              }
               step={1000}
               min={0}
+              disabled={isAllEquity}
             />
             <InputField
               label="Ставка по кредиту, %"
               value={inputs.financing.interestRate}
-              onChange={(value) => updateFinancing({ interestRate: Number(value) })}
+              onChange={(value) =>
+                updateFinancing({ interestRate: Number(value) })
+              }
               step={0.1}
               min={0}
+              disabled={isAllEquity}
             />
             <InputField
               label="Срок кредита, лет"
               value={inputs.financing.loanTermYears}
-              onChange={(value) => updateFinancing({ loanTermYears: Number(value) })}
+              onChange={(value) =>
+                updateFinancing({ loanTermYears: Number(value) })
+              }
               step={1}
               min={1}
+              disabled={isAllEquity}
             />
           </FormSection>
+
           <button
             type="button"
             className="reset-button"
@@ -212,3 +275,5 @@ export const App = () => {
     </div>
   );
 };
+
+export default App;

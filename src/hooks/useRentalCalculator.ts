@@ -56,10 +56,48 @@ export const useRentalCalculator = () => {
       }));
     };
 
+  // 🔹 Переключение режима "вся сумма своими средствами"
+  const setAllEquity = () => {
+    setInputs((prev) => {
+      const total =
+        (prev.property.purchasePrice || 0) +
+        (prev.property.initialCapex || 0);
+
+      return {
+        ...prev,
+        financing: {
+          equity: total,
+          loanAmount: 0,
+          interestRate: 0,
+          loanTermYears: 0,
+        },
+      };
+    });
+  };
+
+  const unsetAllEquity = () => {
+    // Просто разрешаем снова работать с кредитом вручную,
+    // сами числа пользователь потом введёт
+    setInputs((prev) => ({
+      ...prev,
+      financing: {
+        ...prev.financing,
+        // оставляем equity как есть, кредит снова можно задавать
+        loanAmount: prev.financing.loanAmount,
+      },
+    }));
+  };
+
   const results: CalculatorResults = useMemo(
     () => calculateResults(inputs),
     [inputs],
   );
+
+  // Признак, что сейчас по сути "вся сумма своими"
+  const isAllEquity =
+    inputs.financing.loanAmount === 0 &&
+    inputs.financing.equity >=
+      inputs.property.purchasePrice + inputs.property.initialCapex;
 
   return {
     inputs,
@@ -69,6 +107,10 @@ export const useRentalCalculator = () => {
     updateExpenses: updateSection('expenses'),
     updateTaxes: updateSection('taxes'),
     updateFinancing: updateSection('financing'),
+    // режим полной оплаты своими средствами
+    isAllEquity,
+    setAllEquity,
+    unsetAllEquity,
     reset: () => setInputs(defaultInputs),
   };
 };

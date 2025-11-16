@@ -3,7 +3,7 @@ import { formatCurrency, formatNumber, formatPercent } from '../utils/formatters
 
 interface ResultsViewProps {
   inputs: CalculatorInputs;
-  results: CalculatorResults;
+  results: CalculatorResults | null; // results может быть null в начале
 }
 
 const formatPayback = (value: number | null): string => {
@@ -16,6 +16,24 @@ const formatPayback = (value: number | null): string => {
 
 export const ResultsView = ({ inputs, results }: ResultsViewProps) => {
   const currency = inputs.property.currency || 'USD';
+
+  // 🔒 Страхуемся от любых "дыр" в объекте results,
+  // чтобы не было падения на results.grossIncome.monthly
+  if (
+    !results ||
+    !results.grossIncome ||
+    !results.operatingExpenses ||
+    !results.loanPayments ||
+    !results.cashFlow ||
+    !results.returnMetrics
+  ) {
+    return (
+      <section className="results">
+        <h2>Результаты</h2>
+        <p>Недостаточно данных для расчёта (results ещё не полностью посчитан).</p>
+      </section>
+    );
+  }
 
   return (
     <section className="results">
@@ -32,6 +50,7 @@ export const ResultsView = ({ inputs, results }: ResultsViewProps) => {
             </li>
           </ul>
         </div>
+
         <div>
           <h3>Операционные расходы</h3>
           <ul>
@@ -53,24 +72,30 @@ export const ResultsView = ({ inputs, results }: ResultsViewProps) => {
             </li>
           </ul>
         </div>
+
         <div>
           <h3>NOI и налоги</h3>
           <ul>
-            <li>Чистый операционный доход (NOI): {formatCurrency(results.noi, currency)}</li>
+            <li>
+              Чистый операционный доход (NOI): {formatCurrency(results.noi, currency)}
+            </li>
             <li>Налог на прибыль: {formatCurrency(results.taxes, currency)}</li>
           </ul>
         </div>
+
         <div>
           <h3>Кредит</h3>
           <ul>
             <li>
-              Ежемесячный платёж: {formatCurrency(results.loanPayments.monthly, currency)}
+              Ежемесячный платёж:{' '}
+              {formatCurrency(results.loanPayments.monthly, currency)}
             </li>
             <li>
               Ежегодный платёж: {formatCurrency(results.loanPayments.annual, currency)}
             </li>
           </ul>
         </div>
+
         <div>
           <h3>Денежный поток</h3>
           <ul>
@@ -88,13 +113,15 @@ export const ResultsView = ({ inputs, results }: ResultsViewProps) => {
             </li>
           </ul>
         </div>
+
         <div>
           <h3>Показатели доходности</h3>
           <ul>
             <li>Cash-on-Cash: {formatPercent(results.returnMetrics.cashOnCash)}</li>
             <li>Cap Rate: {formatPercent(results.returnMetrics.capRate)}</li>
             <li>
-              Срок окупаемости: {formatPayback(results.returnMetrics.paybackPeriodYears)}
+              Срок окупаемости:{' '}
+              {formatPayback(results.returnMetrics.paybackPeriodYears)}
             </li>
             <li>
               Точка безубыточности:{' '}
