@@ -10,6 +10,7 @@ interface InputFieldProps {
   max?: number;
   suffix?: string;
   description?: string;
+  disabled?: boolean;
 }
 
 export const InputField = ({
