@@ -3,6 +3,8 @@ import { FormSection } from './FormSection';
 import { InputField } from './InputField';
 import { ResultsView } from './ResultsView';
 import { useRentalCalculator } from '../hooks/useRentalCalculator';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const App: React.FC = () => {
   const {
@@ -13,28 +15,86 @@ const App: React.FC = () => {
     updateExpenses,
     updateTaxes,
     updateFinancing,
-    updateProjection,   // 🔹 новый апдейтер блока прогноза
-    isAllEquity,        // 🔹 берём флаг из хука, а не считаем сами
+    updateProjection, // блок прогноза
+    isAllEquity, // флаг "вся сумма своими средствами"
     reset,
   } = useRentalCalculator();
+
+  // Локальное поле: название объекта — только для отчёта и имени файла
+  const [propertyName, setPropertyName] = React.useState('');
 
   const handleCurrencyChange = (value: number | string) => {
     updateProperty({ currency: String(value).toUpperCase() });
   };
 
+  // Экспорт текущего состояния (форма + результаты) в PDF
+  const handleExportPdf = async () => {
+    const element = document.getElementById('calculator-report');
+    if (!element) {
+      return;
+    }
+
+    const safeName = (propertyName || 'Investment Report').trim();
+    const fileName = `${safeName} — Rental Report.pdf`;
+
+    // Делаем скриншот блока с формой и результатами
+    const canvas = await html2canvas(element, { scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+
+    const imgWidth = pdfWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    if (imgHeight <= pdfHeight) {
+      // Всё помещается на одну страницу
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+    } else {
+      // Разбиваем на несколько страниц
+      let position = 0;
+      let heightLeft = imgHeight;
+
+      while (heightLeft > 0) {
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+        if (heightLeft > 0) {
+          pdf.addPage();
+          position = -pdfHeight;
+        }
+      }
+    }
+
+    pdf.save(fileName);
+  };
+
   return (
     <div className="container">
       <header>
-        <h1>Калькулятор доходности недвижимости (Real Estate Investment Calculator)</h1>
+        <h1>
+          Калькулятор доходности недвижимости (Real Estate Investment Calculator)
+        </h1>
         <p>
           Изменяйте входные данные, чтобы мгновенно увидеть влияние на доходность объекта.
           Adjust the inputs to instantly see how they affect your property returns.
         </p>
       </header>
-      <main className="layout">
+
+      {/* Весь блок формы + результатов заворачиваем в id=calculator-report,
+          именно его мы будем выводить в PDF */}
+      <main className="layout" id="calculator-report">
         <form className="form">
           {/* ОБЪЕКТ / PROPERTY */}
           <FormSection title="Объект (Property)">
+            {/* Новое поле: Название объекта — не влияет на расчёты */}
+            <InputField
+              label="Название объекта (не влияет на расчёты) / Property Name"
+              value={propertyName}
+              onChange={(value) => setPropertyName(String(value))}
+              type="text"
+            />
+
             <InputField
               label="Стоимость покупки (Purchase Price)"
               value={inputs.property.purchasePrice}
@@ -64,9 +124,7 @@ const App: React.FC = () => {
           {/* АРЕНДА / RENTAL */}
           <FormSection title="Аренда (Rental)">
             <label className="field">
-              <span className="field__label">
-                Модель аренды (Rental Model)
-              </span>
+              <span className="field__label">Модель аренды (Rental Model)</span>
               <div className="field__input-wrapper">
                 <select
                   value={inputs.rental.model}
@@ -143,7 +201,10 @@ const App: React.FC = () => {
               value={inputs.expenses.fixed.insurance}
               onChange={(value) =>
                 updateExpenses({
-                  fixed: { ...inputs.expenses.fixed, insurance: Number(value) },
+                  fixed: {
+                    ...inputs.expenses.fixed,
+                    insurance: Number(value),
+                  },
                 })
               }
               step={50}
@@ -202,7 +263,6 @@ const App: React.FC = () => {
                   const checked = e.target.checked;
 
                   if (checked) {
-                    // Пользователь выбирает оплату 100% своими средствами
                     const total =
                       inputs.property.purchasePrice +
                       inputs.property.initialCapex;
@@ -214,7 +274,6 @@ const App: React.FC = () => {
                       loanTermYears: 0,
                     });
                   } else {
-                    // При снятии галочки — снова можно ввести параметры кредита
                     updateFinancing({
                       loanAmount: 0,
                       interestRate: 0,
@@ -303,8 +362,20 @@ const App: React.FC = () => {
             Сбросить на значения по умолчанию (Reset to Defaults)
           </button>
         </form>
+
         <ResultsView inputs={inputs} results={results} />
       </main>
+
+      {/* Кнопка экспорта — вне блока report, чтобы не попадала в PDF */}
+      <div style={{ marginTop: '16px' }}>
+        <button
+          type="button"
+          className="reset-button"
+          onClick={handleExportPdf}
+        >
+          Скачать отчёт (PDF)
+        </button>
+      </div>
     </div>
   );
 };
