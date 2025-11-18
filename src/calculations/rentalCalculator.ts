@@ -5,7 +5,7 @@ const safeNumber = (value: number): number =>
   Number.isFinite(value) ? value : 0;
 
 export const calculateResults = (inputs: CalculatorInputs): CalculatorResults => {
-  const { property, rental, expenses, taxes, financing } = inputs;
+  const { property, rental, expenses, taxes, financing, projection } = inputs;
 
   // ---------- 1. ВЫРУЧКА ----------
   const occupancy = Math.min(Math.max(rental.occupancy, 0), 100) / 100; // 0–1
@@ -117,7 +117,6 @@ export const calculateResults = (inputs: CalculatorInputs): CalculatorResults =>
     const nightly = safeNumber(rental.nightlyRent);
     const annualFixed = monthlyFixed * 12;
 
-    // Упрощённо: считаем точку, где NOI ≈ долг (налоги игнорируем для упрощения)
     // annualNOI(x) = nightly * 365 * x * (1 - revenueShare) - annualFixed
     // break-even: annualNOI(x) - annualDebtPayment = 0
     // => nightly * 365 * x * (1 - revenueShare) = annualFixed + annualDebtPayment
@@ -127,7 +126,6 @@ export const calculateResults = (inputs: CalculatorInputs): CalculatorResults =>
       const x = (annualFixed + annualDebtPayment) / denominator; // доля 0–1
       const percent = x * 100;
       if (percent > 0 && percent < 1000) {
-        // если расчёт вменяемый
         breakEvenOccupancy = percent;
       }
     }
@@ -140,7 +138,41 @@ export const calculateResults = (inputs: CalculatorInputs): CalculatorResults =>
     breakEvenOccupancy,
   };
 
-  // ---------- 8. Финальный объект ----------
+  // ---------- 8. TOTAL RETURN / СОВОКУПНЫЙ ROI ----------
+
+  // Берём срок владения и ставку удорожания из projection,
+  // если их ещё нет в форме — можно временно задать дефолты
+  const holdingPeriodYears = safeNumber(projection?.holdingPeriodYears ?? 15);
+  const annualAppreciationRate = safeNumber(projection?.annualAppreciationRate ?? 5); // % в год
+
+  // За базовую стоимость берём totalPurchase (цена объекта + CapEx)
+  const initialValue = totalPurchase;
+
+  const finalSaleValue =
+    initialValue > 0
+      ? initialValue * Math.pow(1 + annualAppreciationRate / 100, holdingPeriodYears)
+      : 0;
+
+  const capitalGain = finalSaleValue - initialValue;
+
+  // Общая прибыль за период: кэшфлоу + прирост капитала
+  const totalProfit =
+    annualAfterDebtAndTax * holdingPeriodYears + capitalGain;
+
+  const totalROI =
+    equity > 0 ? (totalProfit / equity) * 100 : 0;
+
+  const annualizedReturn =
+    holdingPeriodYears > 0 ? totalROI / holdingPeriodYears : 0;
+
+  const totalReturn = {
+    finalSaleValue,
+    capitalGain,
+    totalROI,
+    annualizedReturn,
+  };
+
+  // ---------- 9. Финальный объект ----------
   const results: CalculatorResults = {
     grossIncome,
     operatingExpenses,
@@ -149,6 +181,7 @@ export const calculateResults = (inputs: CalculatorInputs): CalculatorResults =>
     cashFlow,
     taxes: taxesAmount,
     returnMetrics,
+    totalReturn, // ← НОВЫЙ БЛОК В РЕЗУЛЬТАТАХ
   };
 
   return results;

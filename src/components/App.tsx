@@ -13,18 +13,14 @@ const App: React.FC = () => {
     updateExpenses,
     updateTaxes,
     updateFinancing,
+    updateProjection,   // 🔹 новый апдейтер блока прогноза
+    isAllEquity,        // 🔹 берём флаг из хука, а не считаем сами
     reset,
   } = useRentalCalculator();
 
   const handleCurrencyChange = (value: number | string) => {
     updateProperty({ currency: String(value).toUpperCase() });
   };
-
-  // Признак, что объект полностью оплачен своими средствами
-  const isAllEquity =
-    inputs.financing.loanAmount === 0 &&
-    inputs.financing.interestRate === 0 &&
-    inputs.financing.loanTermYears === 0;
 
   return (
     <div className="container">
@@ -208,8 +204,7 @@ const App: React.FC = () => {
                       loanTermYears: 0,
                     });
                   } else {
-                    // При снятии галочки просто даём пользователю
-                    // возможность заново ввести параметры кредита
+                    // При снятии галочки — снова можно ввести параметры кредита
                     updateFinancing({
                       loanAmount: 0,
                       interestRate: 0,
@@ -259,6 +254,32 @@ const App: React.FC = () => {
               step={1}
               min={1}
               disabled={isAllEquity}
+            />
+          </FormSection>
+
+          {/* 🔹 НОВЫЙ РАЗДЕЛ: Прогноз и рост стоимости */}
+          <FormSection title="Прогноз / Рост стоимости">
+            <InputField
+              label="Срок владения, лет"
+              value={inputs.projection.holdingPeriodYears}
+              onChange={(value) =>
+                updateProjection({ holdingPeriodYears: Number(value) })
+              }
+              step={1}
+              min={1}
+              max={50}
+            />
+            <InputField
+              label="Рост стоимости объекта, % в год"
+              value={inputs.projection.annualAppreciationRate}
+              onChange={(value) =>
+                updateProjection({
+                  annualAppreciationRate: Number(value),
+                })
+              }
+              step={0.5}
+              min={0}
+              max={20}
             />
           </FormSection>
 

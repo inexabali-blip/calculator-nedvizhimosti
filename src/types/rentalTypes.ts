@@ -40,12 +40,19 @@ export interface FinancingInputs {
   loanTermYears: number;
 }
 
+// 🔹 НОВЫЙ БЛОК: параметры прогноза / Total Return
+export interface ProjectionInputs {
+  holdingPeriodYears: number;       // срок владения, лет
+  annualAppreciationRate: number;   // рост стоимости объекта, % в год
+}
+
 export interface CalculatorInputs {
   property: PropertyInputs;
   rental: RentalInputs;
   expenses: ExpenseInputs;
   taxes: TaxInputs;
   financing: FinancingInputs;
+  projection: ProjectionInputs;     // 🔹 НОВОЕ ПОЛЕ
 }
 
 export interface GrossIncomeResult {
@@ -78,6 +85,14 @@ export interface ReturnMetricsResult {
   breakEvenOccupancy: number | null;
 }
 
+// 🔹 НОВЫЙ БЛОК: Total Return / Совокупная доходность
+export interface TotalReturnResult {
+  finalSaleValue: number;      // конечная стоимость продажи
+  capitalGain: number;         // прирост капитала
+  totalROI: number;            // совокупный ROI за весь срок, %
+  annualizedReturn: number;    // среднегодовая доходность, %
+}
+
 export interface CalculatorResults {
   grossIncome: GrossIncomeResult;
   operatingExpenses: OperatingExpensesResult;
@@ -86,4 +101,5 @@ export interface CalculatorResults {
   cashFlow: CashFlowResult;
   taxes: number;
   returnMetrics: ReturnMetricsResult;
+  totalReturn: TotalReturnResult;   // 🔹 НОВОЕ ПОЛЕ
 }

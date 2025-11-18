@@ -34,6 +34,11 @@ const defaultInputs: CalculatorInputs = {
     interestRate: 6.5,
     loanTermYears: 15,
   },
+  // 🔹 НОВЫЙ БЛОК: параметры прогноза
+  projection: {
+    holdingPeriodYears: 15,      // срок владения, лет
+    annualAppreciationRate: 5,   // рост стоимости объекта, % в год
+  },
 };
 
 type SectionUpdater<Section extends keyof CalculatorInputs> = (
@@ -107,6 +112,7 @@ export const useRentalCalculator = () => {
     updateExpenses: updateSection('expenses'),
     updateTaxes: updateSection('taxes'),
     updateFinancing: updateSection('financing'),
+    updateProjection: updateSection('projection'), // 🔹 добавили апдейтер для блока прогноза
     // режим полной оплаты своими средствами
     isAllEquity,
     setAllEquity,

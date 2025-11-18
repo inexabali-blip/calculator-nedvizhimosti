@@ -17,7 +17,7 @@ const formatPayback = (value: number | null): string => {
 export const ResultsView = ({ inputs, results }: ResultsViewProps) => {
   const currency = inputs.property.currency || 'USD';
 
-  // 🔒 Страхуемся от любых "дыр" в объекте results,
+  // 🔒 Страхуемся от "дыр" в объекте results,
   // чтобы не было падения на results.grossIncome.monthly
   if (
     !results ||
@@ -25,7 +25,8 @@ export const ResultsView = ({ inputs, results }: ResultsViewProps) => {
     !results.operatingExpenses ||
     !results.loanPayments ||
     !results.cashFlow ||
-    !results.returnMetrics
+    !results.returnMetrics ||
+    !results.totalReturn
   ) {
     return (
       <section className="results">
@@ -34,6 +35,8 @@ export const ResultsView = ({ inputs, results }: ResultsViewProps) => {
       </section>
     );
   }
+
+  const { totalReturn } = results;
 
   return (
     <section className="results">
@@ -91,7 +94,8 @@ export const ResultsView = ({ inputs, results }: ResultsViewProps) => {
               {formatCurrency(results.loanPayments.monthly, currency)}
             </li>
             <li>
-              Ежегодный платёж: {formatCurrency(results.loanPayments.annual, currency)}
+              Ежегодный платёж:{' '}
+              {formatCurrency(results.loanPayments.annual, currency)}
             </li>
           </ul>
         </div>
@@ -128,6 +132,29 @@ export const ResultsView = ({ inputs, results }: ResultsViewProps) => {
               {results.returnMetrics.breakEvenOccupancy !== null
                 ? formatPercent(results.returnMetrics.breakEvenOccupancy)
                 : '—'}
+            </li>
+          </ul>
+        </div>
+
+        {/* 🔹 НОВЫЙ БЛОК: Общая доходность / Total Return */}
+        <div>
+          <h3>Показатели общей доходности (Total Return)</h3>
+          <ul>
+            <li>
+              Конечная стоимость объекта:{' '}
+              {formatCurrency(totalReturn.finalSaleValue, currency)}
+            </li>
+            <li>
+              Прирост капитала за весь период:{' '}
+              {formatCurrency(totalReturn.capitalGain, currency)}
+            </li>
+            <li>
+              Совокупный ROI за период владения:{' '}
+              {formatPercent(totalReturn.totalROI)}
+            </li>
+            <li>
+              Среднегодовая доходность:{' '}
+              {formatPercent(totalReturn.annualizedReturn)}
             </li>
           </ul>
         </div>
