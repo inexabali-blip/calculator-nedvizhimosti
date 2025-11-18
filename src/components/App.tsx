@@ -25,17 +25,18 @@ const App: React.FC = () => {
   return (
     <div className="container">
       <header>
-        <h1>Калькулятор доходности недвижимости</h1>
+        <h1>Калькулятор доходности недвижимости (Real Estate Investment Calculator)</h1>
         <p>
-          Изменяйте входные данные, чтобы мгновенно увидеть влияние на доходность
-          объекта.
+          Изменяйте входные данные, чтобы мгновенно увидеть влияние на доходность объекта.
+          Adjust the inputs to instantly see how they affect your property returns.
         </p>
       </header>
       <main className="layout">
         <form className="form">
-          <FormSection title="Объект">
+          {/* ОБЪЕКТ / PROPERTY */}
+          <FormSection title="Объект (Property)">
             <InputField
-              label="Стоимость покупки"
+              label="Стоимость покупки (Purchase Price)"
               value={inputs.property.purchasePrice}
               onChange={(value) =>
                 updateProperty({ purchasePrice: Number(value) })
@@ -44,13 +45,13 @@ const App: React.FC = () => {
               min={0}
             />
             <InputField
-              label="Валюта"
+              label="Валюта (Currency)"
               value={inputs.property.currency}
               onChange={handleCurrencyChange}
               type="text"
             />
             <InputField
-              label="Дополнительные вложения (CapEx)"
+              label="Дополнительные вложения (CapEx / Additional Capital Expenditures)"
               value={inputs.property.initialCapex}
               onChange={(value) =>
                 updateProperty({ initialCapex: Number(value) })
@@ -60,9 +61,12 @@ const App: React.FC = () => {
             />
           </FormSection>
 
-          <FormSection title="Аренда">
+          {/* АРЕНДА / RENTAL */}
+          <FormSection title="Аренда (Rental)">
             <label className="field">
-              <span className="field__label">Модель аренды</span>
+              <span className="field__label">
+                Модель аренды (Rental Model)
+              </span>
               <div className="field__input-wrapper">
                 <select
                   value={inputs.rental.model}
@@ -72,33 +76,36 @@ const App: React.FC = () => {
                     })
                   }
                 >
-                  <option value="monthly">Помесячно</option>
-                  <option value="daily">Посуточно</option>
+                  <option value="monthly">Помесячно (Monthly)</option>
+                  <option value="daily">Посуточно (Daily)</option>
                 </select>
               </div>
             </label>
+
             <InputField
-              label="Аренда в месяц"
+              label="Аренда в месяц (Monthly Rent)"
               value={inputs.rental.monthlyRent}
               onChange={(value) =>
                 updateRental({ monthlyRent: Number(value) })
               }
               step={100}
               min={0}
-              description="Используется для модели помесячной аренды"
+              description="Используется для модели помесячной аренды. Used for monthly rental model."
             />
+
             <InputField
-              label="Аренда за ночь"
+              label="Аренда за ночь (учитывается только при посуточной аренде) / Nightly Rate (used only for daily rentals)"
               value={inputs.rental.nightlyRent}
               onChange={(value) =>
                 updateRental({ nightlyRent: Number(value) })
               }
               step={10}
               min={0}
-              description="Используется для посуточной аренды"
+              description="Используется только для посуточной модели аренды. Used only for the daily rental model."
             />
+
             <InputField
-              label="Заполняемость, %"
+              label="Заполняемость, % (Occupancy, %)"
               value={inputs.rental.occupancy}
               onChange={(value) => updateRental({ occupancy: Number(value) })}
               step={1}
@@ -107,9 +114,10 @@ const App: React.FC = () => {
             />
           </FormSection>
 
-          <FormSection title="Расходы">
+          {/* РАСХОДЫ / EXPENSES */}
+          <FormSection title="Расходы (Expenses)">
             <InputField
-              label="Коммунальные"
+              label="Коммунальные (Utilities)"
               value={inputs.expenses.fixed.utilities}
               onChange={(value) =>
                 updateExpenses({
@@ -120,7 +128,7 @@ const App: React.FC = () => {
               min={0}
             />
             <InputField
-              label="Персонал"
+              label="Персонал (Staff)"
               value={inputs.expenses.fixed.staff}
               onChange={(value) =>
                 updateExpenses({
@@ -131,7 +139,7 @@ const App: React.FC = () => {
               min={0}
             />
             <InputField
-              label="Страховка"
+              label="Страховка (Insurance)"
               value={inputs.expenses.fixed.insurance}
               onChange={(value) =>
                 updateExpenses({
@@ -142,7 +150,7 @@ const App: React.FC = () => {
               min={0}
             />
             <InputField
-              label="Прочие расходы"
+              label="Прочие расходы (Other Fixed Expenses)"
               value={inputs.expenses.fixed.other}
               onChange={(value) =>
                 updateExpenses({
@@ -153,7 +161,7 @@ const App: React.FC = () => {
               min={0}
             />
             <InputField
-              label="Переменные расходы, % от выручки"
+              label="Переменные расходы, % от выручки (управляющая компания / management fee)"
               value={inputs.expenses.variable.revenueShare}
               onChange={(value) =>
                 updateExpenses({
@@ -169,9 +177,10 @@ const App: React.FC = () => {
             />
           </FormSection>
 
-          <FormSection title="Налоги">
+          {/* НАЛОГИ / TAXES */}
+          <FormSection title="Налоги (Taxes)">
             <InputField
-              label="Ставка налога на прибыль, %"
+              label="Ставка налога на прибыль, % (Income Tax Rate, %)"
               value={inputs.taxes.incomeTaxRate}
               onChange={(value) =>
                 updateTaxes({ incomeTaxRate: Number(value) })
@@ -182,7 +191,8 @@ const App: React.FC = () => {
             />
           </FormSection>
 
-          <FormSection title="Финансирование">
+          {/* ФИНАНСИРОВАНИЕ / FINANCING */}
+          <FormSection title="Финансирование (Financing)">
             {/* Галочка "Вся сумма своими средствами" */}
             <label className="field" style={{ marginBottom: '10px' }}>
               <input
@@ -213,11 +223,13 @@ const App: React.FC = () => {
                   }
                 }}
               />
-              <span style={{ marginLeft: 8 }}>Вся сумма своими средствами</span>
+              <span style={{ marginLeft: 8 }}>
+                Вся сумма своими средствами (100% Equity, No Loan)
+              </span>
             </label>
 
             <InputField
-              label="Собственные средства"
+              label="Собственные средства (Equity)"
               value={inputs.financing.equity}
               onChange={(value) =>
                 updateFinancing({ equity: Number(value) })
@@ -226,7 +238,7 @@ const App: React.FC = () => {
               min={0}
             />
             <InputField
-              label="Кредит"
+              label="Кредит (Loan Amount)"
               value={inputs.financing.loanAmount}
               onChange={(value) =>
                 updateFinancing({ loanAmount: Number(value) })
@@ -236,7 +248,7 @@ const App: React.FC = () => {
               disabled={isAllEquity}
             />
             <InputField
-              label="Ставка по кредиту, %"
+              label="Ставка по кредиту, % (Interest Rate, %)"
               value={inputs.financing.interestRate}
               onChange={(value) =>
                 updateFinancing({ interestRate: Number(value) })
@@ -246,7 +258,7 @@ const App: React.FC = () => {
               disabled={isAllEquity}
             />
             <InputField
-              label="Срок кредита, лет"
+              label="Срок кредита, лет (Loan Term, years)"
               value={inputs.financing.loanTermYears}
               onChange={(value) =>
                 updateFinancing({ loanTermYears: Number(value) })
@@ -257,10 +269,10 @@ const App: React.FC = () => {
             />
           </FormSection>
 
-          {/* 🔹 НОВЫЙ РАЗДЕЛ: Прогноз и рост стоимости */}
-          <FormSection title="Прогноз / Рост стоимости">
+          {/* ПРОГНОЗ / ПРОЦЕНТ РОСТА / PROJECTION */}
+          <FormSection title="Прогноз / Рост стоимости (Projection / Capital Appreciation)">
             <InputField
-              label="Срок владения, лет"
+              label="Срок владения, лет (Holding Period, years)"
               value={inputs.projection.holdingPeriodYears}
               onChange={(value) =>
                 updateProjection({ holdingPeriodYears: Number(value) })
@@ -270,7 +282,7 @@ const App: React.FC = () => {
               max={50}
             />
             <InputField
-              label="Рост стоимости объекта, % в год"
+              label="Рост стоимости объекта, % в год (Annual Appreciation Rate, %)"
               value={inputs.projection.annualAppreciationRate}
               onChange={(value) =>
                 updateProjection({
@@ -288,7 +300,7 @@ const App: React.FC = () => {
             className="reset-button"
             onClick={reset}
           >
-            Сбросить на значения по умолчанию
+            Сбросить на значения по умолчанию (Reset to Defaults)
           </button>
         </form>
         <ResultsView inputs={inputs} results={results} />

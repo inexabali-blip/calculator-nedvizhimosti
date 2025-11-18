@@ -104,7 +104,7 @@ export const calculateResults = (inputs: CalculatorInputs): CalculatorResults =>
   const cashOnCash =
     equity > 0 ? (annualAfterDebtAndTax / equity) * 100 : 0;
 
-  // Срок окупаемости по equity (в годах)
+  // Срок окупаемости по equity (в годах) — только по денежному потоку
   const paybackPeriodYears =
     annualAfterDebtAndTax > 0 && equity > 0
       ? equity / annualAfterDebtAndTax
@@ -140,17 +140,18 @@ export const calculateResults = (inputs: CalculatorInputs): CalculatorResults =>
 
   // ---------- 8. TOTAL RETURN / СОВОКУПНЫЙ ROI ----------
 
-  // Берём срок владения и ставку удорожания из projection,
-  // если их ещё нет в форме — можно временно задать дефолты
+  // Берём срок владения и ставку удорожания из projection
   const holdingPeriodYears = safeNumber(projection?.holdingPeriodYears ?? 15);
   const annualAppreciationRate = safeNumber(projection?.annualAppreciationRate ?? 5); // % в год
 
   // За базовую стоимость берём totalPurchase (цена объекта + CapEx)
   const initialValue = totalPurchase;
 
+  const appreciationRateDecimal = annualAppreciationRate / 100;
+
   const finalSaleValue =
     initialValue > 0
-      ? initialValue * Math.pow(1 + annualAppreciationRate / 100, holdingPeriodYears)
+      ? initialValue * Math.pow(1 + appreciationRateDecimal, holdingPeriodYears)
       : 0;
 
   const capitalGain = finalSaleValue - initialValue;
@@ -165,11 +166,31 @@ export const calculateResults = (inputs: CalculatorInputs): CalculatorResults =>
   const annualizedReturn =
     holdingPeriodYears > 0 ? totalROI / holdingPeriodYears : 0;
 
+  // 🔹 Новая метрика: полная окупаемость с учётом роста стоимости (Total Payback Period)
+  let totalPaybackPeriodYears: number | null = null;
+
+  if (initialValue > 0 && equity > 0 && holdingPeriodYears > 0) {
+    for (let year = 1; year <= holdingPeriodYears; year++) {
+      const valueAtYear =
+        initialValue * Math.pow(1 + appreciationRateDecimal, year);
+      const capitalGainAtYear = valueAtYear - initialValue;
+
+      const cashflowToYear = annualAfterDebtAndTax * year;
+      const totalProfitToYear = cashflowToYear + capitalGainAtYear;
+
+      if (totalProfitToYear >= equity) {
+        totalPaybackPeriodYears = year;
+        break;
+      }
+    }
+  }
+
   const totalReturn = {
     finalSaleValue,
     capitalGain,
     totalROI,
     annualizedReturn,
+    totalPaybackPeriodYears,
   };
 
   // ---------- 9. Финальный объект ----------
@@ -181,7 +202,7 @@ export const calculateResults = (inputs: CalculatorInputs): CalculatorResults =>
     cashFlow,
     taxes: taxesAmount,
     returnMetrics,
-    totalReturn, // ← НОВЫЙ БЛОК В РЕЗУЛЬТАТАХ
+    totalReturn, // ← Total Return + полная окупаемость
   };
 
   return results;

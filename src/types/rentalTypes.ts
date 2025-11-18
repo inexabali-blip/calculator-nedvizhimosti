@@ -81,16 +81,17 @@ export interface CashFlowResult {
 export interface ReturnMetricsResult {
   cashOnCash: number;
   capRate: number;
-  paybackPeriodYears: number | null;
+  paybackPeriodYears: number | null;   // окупаемость по денежному потоку
   breakEvenOccupancy: number | null;
 }
 
 // 🔹 НОВЫЙ БЛОК: Total Return / Совокупная доходность
 export interface TotalReturnResult {
-  finalSaleValue: number;      // конечная стоимость продажи
-  capitalGain: number;         // прирост капитала
-  totalROI: number;            // совокупный ROI за весь срок, %
-  annualizedReturn: number;    // среднегодовая доходность, %
+  finalSaleValue: number;           // конечная стоимость продажи
+  capitalGain: number;              // прирост капитала
+  totalROI: number;                 // совокупный ROI за весь срок, %
+  annualizedReturn: number;         // среднегодовая доходность, %
+  totalPaybackPeriodYears: number | null; // полная окупаемость с учётом роста стоимости, лет
 }
 
 export interface CalculatorResults {
@@ -101,5 +102,5 @@ export interface CalculatorResults {
   cashFlow: CashFlowResult;
   taxes: number;
   returnMetrics: ReturnMetricsResult;
-  totalReturn: TotalReturnResult;   // 🔹 НОВОЕ ПОЛЕ
+  totalReturn: TotalReturnResult;   // Total Return + полная окупаемость
 }
