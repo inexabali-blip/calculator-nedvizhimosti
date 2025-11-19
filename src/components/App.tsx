@@ -15,55 +15,63 @@ const App: React.FC = () => {
     updateExpenses,
     updateTaxes,
     updateFinancing,
-    updateProjection, // блок прогноза
-    isAllEquity, // флаг "вся сумма своими средствами"
+    updateProjection,
+    isAllEquity,
     reset,
   } = useRentalCalculator();
 
-  // Локальное поле: название объекта — только для отчёта и имени файла
+  // Название объекта — только для отчёта и имени файла
   const [propertyName, setPropertyName] = React.useState('');
 
   const handleCurrencyChange = (value: number | string) => {
     updateProperty({ currency: String(value).toUpperCase() });
   };
 
-  // Экспорт текущего состояния (форма + результаты) в PDF
+  /**
+   * 📌 ИСПРАВЛЕННЫЙ ЭКСПОРТ В PDF
+   * - работает и на десктопе, и на мобильных
+   * - многостраничный отчёт без повторяющихся страниц
+   * - фикс scrollY для мобильного Safari
+   */
   const handleExportPdf = async () => {
     const element = document.getElementById('calculator-report');
-    if (!element) {
-      return;
-    }
+    if (!element) return;
 
     const safeName = (propertyName || 'Investment Report').trim();
     const fileName = `${safeName} — Rental Report.pdf`;
 
-    // Делаем скриншот блока с формой и результатами
-    const canvas = await html2canvas(element, { scale: 2 });
+    // Делаем скриншот блока формы + результатов
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      scrollY: -window.scrollY, // важно для мобильных браузеров
+      useCORS: true,
+    });
+
     const imgData = canvas.toDataURL('image/png');
 
+    // Создаём PDF формата A4
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
 
+    // Пропорционально подгоняем ширину под PDF
     const imgWidth = pdfWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-    if (imgHeight <= pdfHeight) {
-      // Всё помещается на одну страницу
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-    } else {
-      // Разбиваем на несколько страниц
-      let position = 0;
-      let heightLeft = imgHeight;
+    // Многостраничная логика: режем одно длинное изображение по высоте
+    let heightLeft = imgHeight;
+    let position = 0;
 
-      while (heightLeft > 0) {
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-        if (heightLeft > 0) {
-          pdf.addPage();
-          position = -pdfHeight;
-        }
-      }
+    // Первая страница
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pdfHeight;
+
+    // Последующие страницы — каждый раз сдвигаем изображение выше
+    while (heightLeft > 0) {
+      position -= pdfHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
     }
 
     pdf.save(fileName);
@@ -82,12 +90,11 @@ const App: React.FC = () => {
       </header>
 
       {/* Весь блок формы + результатов заворачиваем в id=calculator-report,
-          именно его мы будем выводить в PDF */}
+          именно его мы экспортируем в PDF */}
       <main className="layout" id="calculator-report">
         <form className="form">
           {/* ОБЪЕКТ / PROPERTY */}
           <FormSection title="Объект (Property)">
-            {/* Новое поле: Название объекта — не влияет на расчёты */}
             <InputField
               label="Название объекта (не влияет на расчёты) / Property Name"
               value={propertyName}
@@ -254,7 +261,6 @@ const App: React.FC = () => {
 
           {/* ФИНАНСИРОВАНИЕ / FINANCING */}
           <FormSection title="Финансирование (Financing)">
-            {/* Галочка "Вся сумма своими средствами" */}
             <label className="field" style={{ marginBottom: '10px' }}>
               <input
                 type="checkbox"
@@ -328,7 +334,7 @@ const App: React.FC = () => {
             />
           </FormSection>
 
-          {/* ПРОГНОЗ / ПРОЦЕНТ РОСТА / PROJECTION */}
+          {/* ПРОГНОЗ / PROJECTION */}
           <FormSection title="Прогноз / Рост стоимости (Projection / Capital Appreciation)">
             <InputField
               label="Срок владения, лет (Holding Period, years)"
@@ -354,11 +360,7 @@ const App: React.FC = () => {
             />
           </FormSection>
 
-          <button
-            type="button"
-            className="reset-button"
-            onClick={reset}
-          >
+          <button type="button" className="reset-button" onClick={reset}>
             Сбросить на значения по умолчанию (Reset to Defaults)
           </button>
         </form>
